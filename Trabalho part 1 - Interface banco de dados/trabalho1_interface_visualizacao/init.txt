@@ -1,0 +1,4 @@
+1
+root
+S3rv3rSenh@
+jdbc:mysql://localhost/
