@@ -19,6 +19,7 @@ public class tela_principal extends javax.swing.JFrame {
     private String usuario;
     private String url;
     private String senha;
+    private String banco_selecionado;
     /**
      * Creates new form tela_principal
      * @param usr
@@ -30,6 +31,7 @@ public class tela_principal extends javax.swing.JFrame {
         usuario = usr;
         senha = pss;
         url = urls;
+        banco_selecionado = "";
         //System.out.println("Recebi:" + url + " " + usuario + " " + senha + " " + nome_db);
         
         carrega_arvore();
@@ -43,38 +45,85 @@ public class tela_principal extends javax.swing.JFrame {
             DatabaseMetaData meta = con.getMetaData();
             
             DefaultTreeModel modelo;
+            DefaultMutableTreeNode raiz = new DefaultMutableTreeNode("Databases");
             
             //Tabelas e schemas
             ResultSet tabelas = meta.getTables(null, null, null, new String[]{"TABLE"});
+            
+            //Variaveis para os nodes db
+            String nome_anterior = "";
+            String nome_atual;
+            DefaultMutableTreeNode db_node = new DefaultMutableTreeNode("erro");
+            
+            //Pega dados do primeiro db
+            if(tabelas.next())
+            {
+                nome_anterior = tabelas.getString(1);
+                db_node = new DefaultMutableTreeNode(nome_anterior);
+                tabelas.previous();
+            }
             while(tabelas.next())
             {
-                System.out.println("Database: " + tabelas.getString(1));
-                System.out.println("Tabela: " + tabelas.getString("TABLE_NAME"));
+                nome_atual = tabelas.getString(1);
+                
+                //Se mudou de db
+                if(!(nome_anterior.equals(nome_atual)))
+                {
+                    //Adiciona na raiz e arruma as variaveis de controle
+                    raiz.add(db_node);
+                    db_node = new DefaultMutableTreeNode(nome_atual);
+                    nome_anterior = nome_atual;
+                }
+                
+                //Adiciona nome da tabela ao node
+                DefaultMutableTreeNode tabela_node = new DefaultMutableTreeNode(tabelas.getString("TABLE_NAME"));
                 
                 //Colunas
                 ResultSet colunas = meta.getColumns(null, null, tabelas.getString("TABLE_NAME"), null);
+                DefaultMutableTreeNode coluna_node = new DefaultMutableTreeNode("Colunas");
+                
+                //Adiciona nomes das colunas
+                int i = 1;
                 while(colunas.next())
                 {
-                    System.out.println("Campo: " + colunas.getString("COLUMN_NAME"));
+                    String nome_coluna = colunas.getString("COLUMN_NAME");
+                    
+                    nome_coluna += " - " + colunas.getString("TYPE_NAME");
+                    nome_coluna += "(" + colunas.getString("COLUMN_SIZE") + ")";
+                    coluna_node.add(new DefaultMutableTreeNode(nome_coluna));
                 }
+                tabela_node.add(coluna_node);
                 
-                //Chaves de cada coluna
+                //Chaves primarias
                 ResultSet chaves = meta.getPrimaryKeys(null, null, tabelas.getString("TABLE_NAME"));
+                DefaultMutableTreeNode pk_node = new DefaultMutableTreeNode("Primary_Keys");
+                
+                //Adiciona nomes das chaves primarias
                 while(chaves.next())
                 {
-                    System.out.println("Chave primaria: " + chaves.getString("COLUMN_NAME"));
+                    pk_node.add(new DefaultMutableTreeNode(chaves.getString("COLUMN_NAME")));
                 }
+                
+                tabela_node.add(pk_node);
+                db_node.add(tabela_node);
+            }
+            
+            modelo = (DefaultTreeModel)arvore.getModel();
+            modelo.setRoot(raiz);
+            arvore.setModel(modelo);
+            
+            ResultSet views = meta.getTables(null, null, null, new String[]{"VIEW"});
+            while(views.next())
+            {
+                //Nome tabela
+                System.out.println(views.getString(1));
+                //Nome da view
+                System.out.println(views.getString("TABLE_NAME"));
                 System.out.println("");
             }
         } catch (SQLException ex) {
             System.out.println("Erro db: " + ex);
         }
-        
-        DefaultMutableTreeNode raiz = new DefaultMutableTreeNode("Bases de dado");
-        raiz.add(new DefaultMutableTreeNode("filho"));
-        modelo = (DefaultTreeModel)arvore.getModel();
-        modelo.setRoot(raiz);
-        arvore.setModel(modelo);
     }
 
     /**
@@ -106,8 +155,18 @@ public class tela_principal extends javax.swing.JFrame {
         texto_tela_inicial.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         texto_tela_inicial.setText("Banco de dados - ");
 
-        arvore.setFont(new java.awt.Font("Liberation Sans", 0, 30)); // NOI18N
-        javax.swing.tree.DefaultMutableTreeNode treeNode1 = new javax.swing.tree.DefaultMutableTreeNode("root");
+        arvore.setFont(new java.awt.Font("Liberation Sans", 0, 20)); // NOI18N
+        javax.swing.tree.DefaultMutableTreeNode treeNode1 = new javax.swing.tree.DefaultMutableTreeNode("Databases");
+        javax.swing.tree.DefaultMutableTreeNode treeNode2 = new javax.swing.tree.DefaultMutableTreeNode("\"tabela\"");
+        javax.swing.tree.DefaultMutableTreeNode treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("Colunas");
+        javax.swing.tree.DefaultMutableTreeNode treeNode4 = new javax.swing.tree.DefaultMutableTreeNode("\"nomes\"");
+        treeNode3.add(treeNode4);
+        treeNode2.add(treeNode3);
+        treeNode3 = new javax.swing.tree.DefaultMutableTreeNode("Primary_keys");
+        treeNode4 = new javax.swing.tree.DefaultMutableTreeNode("\"nomes\"");
+        treeNode3.add(treeNode4);
+        treeNode2.add(treeNode3);
+        treeNode1.add(treeNode2);
         arvore.setModel(new javax.swing.tree.DefaultTreeModel(treeNode1));
         arvore.addAncestorListener(new javax.swing.event.AncestorListener() {
             public void ancestorAdded(javax.swing.event.AncestorEvent evt) {
@@ -116,6 +175,11 @@ public class tela_principal extends javax.swing.JFrame {
             public void ancestorMoved(javax.swing.event.AncestorEvent evt) {
             }
             public void ancestorRemoved(javax.swing.event.AncestorEvent evt) {
+            }
+        });
+        arvore.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                arvoreMouseClicked(evt);
             }
         });
         jScrollPane1.setViewportView(arvore);
@@ -158,10 +222,9 @@ public class tela_principal extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 221, Short.MAX_VALUE)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 323, Short.MAX_VALUE)
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(texto_tela_inicial)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(botao_exportar)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -174,6 +237,10 @@ public class tela_principal extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(botao_limpar)))
                 .addContainerGap())
+            .addGroup(layout.createSequentialGroup()
+                .addGap(34, 34, 34)
+                .addComponent(texto_tela_inicial)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -204,6 +271,20 @@ public class tela_principal extends javax.swing.JFrame {
     private void arvoreAncestorAdded(javax.swing.event.AncestorEvent evt) {//GEN-FIRST:event_arvoreAncestorAdded
         // TODO add your handling code here:
     }//GEN-LAST:event_arvoreAncestorAdded
+
+    private void arvoreMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_arvoreMouseClicked
+        // TODO add your handling code here:
+        DefaultMutableTreeNode aux = (DefaultMutableTreeNode)arvore.getSelectionPath().getLastPathComponent();
+        String db_nome = aux.getUserObject().toString();
+        
+        if(!(db_nome.equals("Databases")))
+        {
+            aux = (DefaultMutableTreeNode)arvore.getSelectionPath().getPathComponent(1);
+            db_nome = aux.getUserObject().toString();
+            texto_tela_inicial.setText("Banco de dados - " + db_nome);
+            banco_selecionado = db_nome;
+        }
+    }//GEN-LAST:event_arvoreMouseClicked
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTree arvore;
