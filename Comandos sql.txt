@@ -1,0 +1,10 @@
+Ligar
+sudo systemctl start mysql
+
+Checar
+systemctl status mysql.service
+
+Desligar
+sudo systemctl stop mysql
+
+/usr/share/java
