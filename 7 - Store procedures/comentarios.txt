@@ -1,0 +1,9 @@
+Aluno: Tiago Gonaçalves da Silva
+RA: 2023644
+
+Não consegui fazer o retorno em um Store Procedure, então optei por fazer com que o terceiro parâmetro do Store Procedure para retornar a média seja a saída, pode-se fazer a chamada da procedure guardando seu retorno em uma session variable, por exemplo:
+
+CALL media_2(10,13,@media);
+SELECT @media as m;
+
+Achei mais complicado e burocrático usar functions e procedures dentro do banco de dados do que fazer o mesmo dentro de uma aplicação com JDBC por exemplo, especialmente algo simples como calcular a média, talvez isso se dê ao fato de eu não estar acostumado, além disso ter sintaxes diferentes no postgreSQL e no MySQL prejudica muito, dado que em uma API de banco de dados a linguagem seria a mesma.

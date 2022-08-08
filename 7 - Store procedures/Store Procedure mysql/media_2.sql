@@ -1,0 +1,12 @@
+DELIMITER //
+
+CREATE PROCEDURE media_2 (IN x1 INT,IN x2 INT, OUT media FLOAT)
+
+BEGIN
+
+   SET media = (x1+x2)/2;
+
+END; //
+
+DELIMITER ;
+
